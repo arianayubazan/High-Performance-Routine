@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plan Nutricional Semanal · Fitia</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --verde:#2D6A4F; --verde-claro:#52B788; --menta:#B7E4C7; --crema:#FEFAE0; --gris:#F8F6F2; --texto:#1A1A2E; --suave:#5A5A72; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'DM Sans',sans-serif; background:var(--crema); color:var(--texto); }
+
+  /* TOP */
+  .top-bar { background:linear-gradient(90deg,#2D6A4F,#52B788); padding:12px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; }
+  .top-bar-title { font-family:'Playfair Display',serif; font-size:1.1rem; color:#fff; font-weight:700; }
+  .top-bar-meta { color:rgba(255,255,255,0.6); font-size:11px; margin-top:1px; }
+  .tb-badges { display:flex; gap:6px; }
+  .tb-badge { background:rgba(255,255,255,0.18); color:#fff; font-size:10px; font-weight:600; padding:3px 10px; border-radius:20px; }
+
+  /* DAY NAV */
+  .day-nav { position:sticky; top:0; z-index:200; background:rgba(254,250,224,0.96); backdrop-filter:blur(12px); border-bottom:1px solid rgba(45,106,79,0.12); padding:9px 16px; box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+  .day-nav-inner { max-width:860px; margin:0 auto; display:flex; gap:5px; overflow-x:auto; scrollbar-width:none; }
+  .day-nav-inner::-webkit-scrollbar { display:none; }
+  .day-btn { flex-shrink:0; padding:7px 14px; border-radius:30px; border:1.5px solid rgba(45,106,79,0.2); background:transparent; color:var(--suave); font-family:'DM Sans',sans-serif; font-size:12.5px; font-weight:600; cursor:pointer; transition:all 0.18s; white-space:nowrap; }
+  .day-btn:hover { border-color:var(--verde-claro); color:var(--verde); background:rgba(82,183,136,0.08); }
+  .day-btn.active { background:var(--verde); border-color:var(--verde); color:#fff; }
+  .day-btn.dom.active { background:linear-gradient(90deg,#6A0572,#AB47BC); border-color:#AB47BC; }
+
+  /* CONTAINER */
+  .container { max-width:860px; margin:0 auto; padding:16px 16px 60px; }
+
+  /* DIA CARD */
+  .dia-card { display:none; background:#fff; border-radius:22px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.07); }
+  .dia-card.visible { display:block; }
+
+  /* DIA HEADER */
+  .dia-header { padding:16px 20px 0; background:linear-gradient(90deg,var(--verde) 0%,var(--verde-claro) 100%); }
+  .dia-header.dom { background:linear-gradient(90deg,#6A0572 0%,#AB47BC 100%); }
+  .dia-header-top { display:flex; align-items:center; gap:10px; padding-bottom:12px; }
+  .dia-num { width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#fff; flex-shrink:0; }
+  .dia-info { flex:1; }
+  .dia-info h3 { color:#fff; font-size:1rem; font-weight:700; }
+  .dia-info p { color:rgba(255,255,255,0.7); font-size:11px; margin-top:1px; }
+  .dia-kcal { background:rgba(255,255,255,0.18); border-radius:10px; padding:5px 12px; text-align:center; }
+  .dia-kcal .knum { color:#fff; font-size:.95rem; font-weight:800; }
+  .dia-kcal .klbl { color:rgba(255,255,255,0.65); font-size:9px; }
+
+  /* MEAL NAV (inside header) */
+  .meal-nav { display:flex; background:rgba(0,0,0,0.13); }
+  .mb { flex:1; display:flex; flex-direction:column; align-items:center; padding:8px 3px 9px; cursor:pointer; border:none; background:transparent; transition:background 0.15s; gap:2px; border-right:1px solid rgba(255,255,255,0.08); }
+  .mb:last-child { border-right:none; }
+  .mb:hover { background:rgba(255,255,255,0.1); }
+  .mb.active { background:rgba(255,255,255,0.22); }
+  .mb .mi { font-size:16px; line-height:1; }
+  .mb .mt { font-size:9.5px; font-weight:700; color:rgba(255,255,255,0.95); margin-top:2px; }
+  .mb .ml { font-size:8px; color:rgba(255,255,255,0.6); }
+  @media(max-width:480px){ .mb .ml { display:none; } }
+
+  /* MEAL VIEW */
+  .meal-view { display:none; padding:20px; animation:fadeIn .17s ease; }
+  .meal-view.active { display:block; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+  .comida { display:flex; gap:14px; align-items:flex-start; }
+  .c-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .ic-d{background:#FFF3E0} .ic-s{background:#E8F5E9} .ic-a{background:#E3F2FD} .ic-m{background:#FCE4EC} .ic-c{background:#F3E5F5}
+  .c-body { flex:1; }
+  .c-nombre { font-size:10px; font-weight:700; color:var(--suave); text-transform:uppercase; letter-spacing:.8px; margin-bottom:3px; }
+  .c-plato { font-size:15px; font-weight:700; color:var(--texto); margin-bottom:11px; line-height:1.3; }
+
+  .ings { margin-bottom:11px; }
+  .ir { display:flex; align-items:baseline; gap:6px; padding:4px 0; border-bottom:1px dashed rgba(0,0,0,0.06); font-size:12.5px; }
+  .ir:last-child { border-bottom:none; }
+  .ic { font-weight:700; color:var(--texto); min-width:65px; flex-shrink:0; }
+  .in { color:var(--texto); flex:1; }
+  .ie { font-size:9.5px; font-weight:600; padding:2px 7px; border-radius:10px; flex-shrink:0; }
+  .crudo { background:#E8F5E9; color:#2D6A4F; }
+  .cocido { background:#FFF3E0; color:#E65100; }
+  .otro { background:#F3E5F5; color:#6A1B9A; }
+
+  .prep { background:rgba(45,106,79,0.06); border-left:3px solid var(--verde-claro); border-radius:0 8px 8px 0; padding:9px 12px; font-size:12px; color:var(--suave); line-height:1.65; margin-bottom:12px; }
+  .prep strong { color:var(--verde); font-size:10px; text-transform:uppercase; letter-spacing:.5px; display:block; margin-bottom:3px; }
+
+  .macros { display:flex; gap:7px; flex-wrap:wrap; margin-top:2px; }
+  .tag { font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; }
+  .tp{background:#DDEEFF;color:#1565C0} .tc{background:#FFF9C4;color:#7B6000} .tg{background:#FCE4EC;color:#880E4F} .tk{background:#E8F5E9;color:#1B5E20}
+
+  /* NAV PREV/NEXT */
+  .meal-nav-btns { display:flex; justify-content:space-between; align-items:center; padding:12px 20px 18px; }
+  .btn-prev,.btn-next { padding:9px 20px; border-radius:30px; border:none; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all .18s; }
+  .btn-prev { background:var(--gris); color:var(--suave); }
+  .btn-prev:disabled { opacity:.25; cursor:default; }
+  .btn-next { background:var(--verde); color:#fff; }
+  .btn-next:hover:not(:disabled) { background:#235c42; }
+  .btn-next:disabled { opacity:.25; cursor:default; }
+  .meal-counter { font-size:12px; color:var(--suave); }
+
+  /* EXTRAS CARD */
+  .extras-card { display:none; background:#fff; border-radius:22px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,0.07); }
+  .extras-card.visible { display:block; }
+  .extra-tabs { display:flex; background:var(--gris); border-bottom:1px solid rgba(0,0,0,0.06); }
+  .extra-tab { flex:1; padding:13px; text-align:center; font-size:13px; font-weight:600; cursor:pointer; color:var(--suave); border:none; background:transparent; font-family:'DM Sans',sans-serif; transition:all .18s; border-bottom:2px solid transparent; }
+  .extra-tab.active { color:var(--verde); border-bottom:2px solid var(--verde); background:#fff; }
+  .extra-panel { display:none; padding:20px; }
+  .extra-panel.active { display:block; }
+
+  .sup-list { display:flex; flex-direction:column; gap:11px; }
+  .sup-item { display:flex; align-items:flex-start; gap:12px; padding:13px; background:var(--gris); border-radius:13px; }
+  .si { font-size:22px; flex-shrink:0; }
+  .st h5 { font-size:13px; font-weight:700; }
+  .st p { font-size:12px; color:var(--suave); margin-top:3px; line-height:1.55; }
+
+  .tips-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:11px; }
+  .tip { background:linear-gradient(135deg,#1B4332,#2D6A4F); border-radius:14px; padding:16px; }
+  .ti { font-size:22px; margin-bottom:7px; }
+  .tip h5 { font-size:12.5px; font-weight:700; color:#fff; margin-bottom:5px; }
+  .tip p { font-size:11.5px; color:rgba(255,255,255,0.65); line-height:1.6; }
+
+  .footer { text-align:center; padding:28px 16px; color:var(--suave); font-size:12px; }
+  .footer strong { color:var(--verde); }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <div class="top-bar-title">Plan Nutricional Semanal</div>
+    <div class="top-bar-meta">1,450 kcal · 115g proteína · déficit ~600 kcal · Domingo descanso 1,650 kcal</div>
+  </div>
+  <div class="tb-badges">
+    <span class="tb-badge">🌿 Fitia</span>
+    <span class="tb-badge">⏰ 4:30am–9pm</span>
+  </div>
+</div>
+
+<div class="day-nav">
+  <div class="day-nav-inner">
+    <button class="day-btn active" onclick="showDay('lunes')" id="btn-lunes">Lunes</button>
+    <button class="day-btn" onclick="showDay('martes')" id="btn-martes">Martes</button>
+    <button class="day-btn" onclick="showDay('miercoles')" id="btn-miercoles">Miércoles</button>
+    <button class="day-btn" onclick="showDay('jueves')" id="btn-jueves">Jueves</button>
+    <button class="day-btn" onclick="showDay('viernes')" id="btn-viernes">Viernes</button>
+    <button class="day-btn" onclick="showDay('sabado')" id="btn-sabado">Sábado</button>
+    <button class="day-btn dom" onclick="showDay('domingo')" id="btn-domingo">🌸 Domingo</button>
+    <button class="day-btn" onclick="showDay('extras')" id="btn-extras">+ Info</button>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ==================== LUNES ==================== -->
+<div class="dia-card visible" id="dia-lunes">
+  <div class="dia-header">
+    <div class="dia-header-top">
+      <div class="dia-num">L</div>
+      <div class="dia-info"><h3>Lunes — Inicio fuerte</h3><p>Alto en proteína · Anti-inflamatorio</p></div>
+      <div class="dia-kcal"><div class="knum">1,440</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-lunes">
+      <button class="mb active" onclick="showMeal('lunes',0)"><span class="mi">🌙⚡</span><span class="mt">4:30am</span><span class="ml">Pre-entreno</span></button>
+      <button class="mb" onclick="showMeal('lunes',1)"><span class="mi">🍳</span><span class="mt">7:15am</span><span class="ml">Post-entreno</span></button>
+      <button class="mb" onclick="showMeal('lunes',2)"><span class="mi">🍓</span><span class="mt">10:30am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('lunes',3)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('lunes',4)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-lunes-0">
+    <div class="comida">
+      <div class="c-icon ic-d">🌙⚡</div>
+      <div class="c-body">
+        <div class="c-nombre">Pre-entreno · 4:30am</div>
+        <div class="c-plato">½ plátano + café negro</div>
+        <div class="ings">
+          <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano mediano (~60g)</span><span class="ie crudo">crudo</span></div>
+          <div class="ir"><span class="ic">1 cdita</span><span class="in">Café instantáneo en 200ml agua caliente</span><span class="ie otro">disuelto</span></div>
+        </div>
+        <div class="prep"><strong>Preparación</strong>Pelar y comer el plátano directo. Disolver el café en agua caliente sin azúcar ni leche. Listo en 1 minuto.</div>
+        <div class="macros"><span class="tag tp">P: 1g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 0g</span><span class="tag tk">~55 kcal</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-view" id="mv-lunes-1">
+    <div class="comida">
+      <div class="c-icon ic-s">🍳</div>
+      <div class="c-body">
+        <div class="c-nombre">Post-entreno · 7:15am</div>
+        <div class="c-plato">Bowl de avena caliente con fresas, chía y canela</div>
+        <div class="ings">
+          <div class="ir"><span class="ic">50g</span><span class="in">Avena Quaker en hojuelas</span><span class="ie crudo">cruda en seco</span></div>
+          <div class="ir"><span class="ic">200ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">sin calentar aún</span></div>
+          <div class="ir"><span class="ic">80g</span><span class="in">Fresas (~5-6 fresas medianas)</span><span class="ie crudo">crudas, lavadas</span></div>
+          <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">crudas</span></div>
+          <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela en polvo</span><span class="ie otro">al gusto</span></div>
+          <div class="ir"><span class="ic">½ cdita</span><span class="in">Esencia de vainilla</span><span class="ie otro">al gusto</span></div>
+          <div class="ir"><span class="ic">3–5g</span><span class="in">Creatina monohidrato</span><span class="ie otro">disuelto aquí</span></div>
+        </div>
+        <div class="prep"><strong>Preparación</strong>Calentar la leche de almendra (microondas 2 min o olla). Agregar avena y cocinar 3-4 min revolviendo hasta que espese. Apagar, añadir chía, canela, vainilla y stevia. Servir con fresas en rodajas encima. Disolver la creatina en el bowl.</div>
+        <div class="macros"><span class="tag tp">P: 18g</span><span class="tag tc">C: 52g</span><span class="tag tg">G: 9g</span><span class="tag tk">~370 kcal</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-view" id="mv-lunes-2">
+    <div class="comida">
+      <div class="c-icon ic-s">🍓</div>
+      <div class="c-body">
+        <div class="c-nombre">Media mañana · 10:30am</div>
+        <div class="c-plato">Skyr con arándanos y frutos secos</div>
+        <div class="ings">
+          <div class="ir"><span class="ic">150g</span><span class="in">Yogurt griego Skyr natural</span><span class="ie otro">frío</span></div>
+          <div class="ir"><span class="ic">60g</span><span class="in">Arándanos frescos o descongelados</span><span class="ie crudo">crudos</span></div>
+          <div class="ir"><span class="ic">15g</span><span class="in">Mix de frutos secos sin sal</span><span class="ie crudo">crudos</span></div>
+        </div>
+        <div class="prep"><strong>Preparación</strong>Servir skyr en bowl, añadir arándanos y frutos secos encima. Sin cocción.</div>
+        <div class="macros"><span class="tag tp">P: 20g</span><span class="tag tc">C: 18g</span><span class="tag tg">G: 7g</span><span class="tag tk">~215 kcal</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-view" id="mv-lunes-3">
+    <div class="comida">
+      <div class="c-icon ic-a">🍽️</div>
+      <div class="c-body">
+        <div class="c-nombre">Almuerzo · 1:30pm</div>
+        <div class="c-plato">Pollo al limón con camote asado y ensalada verde</div>
+        <div class="ings">
+          <div class="ir"><span class="ic">150g</span><span class="in">Pechuga de pollo (~185g crudo)</span><span class="ie cocido">plancha</span></div>
+          <div class="ir"><span class="ic">120g</span><span class="in">Camote / batata (~150g crudo)</span><span class="ie cocido">asado horno</span></div>
+          <div class="ir"><span class="ic">40g</span><span class="in">Espinaca fresca</span><span class="ie crudo">cruda</span></div>
+          <div class="ir"><span class="ic">1 unidad</span><span class="in">Tomate mediano (~100g)</span><span class="ie crudo">crudo</span></div>
+          <div class="ir"><span class="ic">½ unidad</span><span class="in">Pepino (~80g)</span><span class="ie crudo">crudo</span></div>
+          <div class="ir"><span class="ic">50g</span><span class="in">Zanahoria</span><span class="ie crudo">cruda, rallada</span></div>
+          <div class="ir"><span class="ic">½ limón</span><span class="in">Jugo de limón, sal, pimienta</span><span class="ie otro">al gusto</span></div>
+        </div>
+        <div class="prep"><strong>Preparación</strong>Camote: cubos 2cm, 200°C 25-30 min. Pollo: golpear hasta 1.5cm, marinar con limón y sal, plancha 4-5 min por lado. Ensalada: mezclar todo y aderezar con limón.</div>
+        <div class="macros"><span class="tag tp">P: 42g</span><span class="tag tc">C: 30g</span><span class="tag tg">G: 5g</span><span class="tag tk">~420 kcal</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-view" id="mv-lunes-4">
+    <div class="comida">
+      <div class="c-icon ic-c">🌙</div>
+      <div class="c-body">
+        <div class="c-nombre">Cena · 7:00pm</div>
+        <div class="c-plato">Tortilla de espinaca y atún con ensalada de beterraga</div>
+        <div class="ings">
+          <div class="ir"><span class="ic">2 unidades</span><span class="in">Huevos medianos (100g total)</span><span class="ie cocido">batidos y cocinados</span></div>
+          <div class="ir"><span class="ic">30g</span><span class="in">Espinaca fresca</span><span class="ie cocido">salteada en tortilla</span></div>
+          <div class="ir"><span class="ic">80g</span><span class="in">Atún al agua en lata</span><span class="ie cocido">escurrido</span></div>
+          <div class="ir"><span class="ic">100g</span><span class="in">Beterraga / remolacha</span><span class="ie cocido">cocida, rallada</span></div>
+          <div class="ir"><span class="ic">50g</span><span class="in">Zanahoria</span><span class="ie crudo">cruda, rallada</span></div>
+          <div class="ir"><span class="ic">½ limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+        </div>
+        <div class="prep"><strong>Preparación</strong>Saltear espinaca 1-2 min. Batir huevos, verter sobre espinaca, añadir atún escurrido, tapar 3-4 min a fuego medio-bajo. Ensalada: beterraga rallada + zanahoria + limón.</div>
+        <div class="macros"><span class="tag tp">P: 38g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 14g</span><span class="tag tk">~330 kcal</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-lunes" onclick="stepMeal('lunes',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-lunes">1 / 5</span>
+    <button class="btn-next" id="next-lunes" onclick="stepMeal('lunes',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== MARTES ==================== -->
+<div class="dia-card" id="dia-martes">
+  <div class="dia-header">
+    <div class="dia-header-top">
+      <div class="dia-num">M</div>
+      <div class="dia-info"><h3>Martes — Antioxidante total</h3><p>Foco en piel y colágeno · Alta fibra</p></div>
+      <div class="dia-kcal"><div class="knum">1,460</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-martes">
+      <button class="mb active" onclick="showMeal('martes',0)"><span class="mi">🌙⚡</span><span class="mt">4:30am</span><span class="ml">Pre-entreno</span></button>
+      <button class="mb" onclick="showMeal('martes',1)"><span class="mi">🥗</span><span class="mt">7:15am</span><span class="ml">Post-entreno</span></button>
+      <button class="mb" onclick="showMeal('martes',2)"><span class="mi">🥚</span><span class="mt">10:30am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('martes',3)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('martes',4)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-martes-0">
+    <div class="comida"><div class="c-icon ic-d">🌙⚡</div><div class="c-body">
+      <div class="c-nombre">Pre-entreno · 4:30am</div><div class="c-plato">½ plátano + café negro</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano mediano (~60g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">1 cdita</span><span class="in">Café instantáneo en 200ml agua caliente</span><span class="ie otro">disuelto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Comer el plátano y beber el café negro sin azúcar. Dejar el plátano del smoothie congelado desde la noche anterior.</div>
+      <div class="macros"><span class="tag tp">P: 1g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 0g</span><span class="tag tk">~55 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-martes-1">
+    <div class="comida"><div class="c-icon ic-s">🥗</div><div class="c-body">
+      <div class="c-nombre">Post-entreno · 7:15am</div><div class="c-plato">Smoothie bowl verde proteico</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Plátano (~120g)</span><span class="ie otro">congelado en rodajas desde anoche</span></div>
+        <div class="ir"><span class="ic">30g</span><span class="in">Espinaca fresca</span><span class="ie crudo">cruda</span></div>
+        <div class="ir"><span class="ic">150ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">fría</span></div>
+        <div class="ir"><span class="ic">30g</span><span class="in">Avena en hojuelas</span><span class="ie crudo">cruda, como topping</span></div>
+        <div class="ir"><span class="ic">60g</span><span class="in">Fresas (~4 fresas)</span><span class="ie crudo">crudas, en rodajas</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Arándanos</span><span class="ie crudo">crudos</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">crudas</span></div>
+        <div class="ir"><span class="ic">3–5g</span><span class="in">Creatina monohidrato</span><span class="ie otro">en la base</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Base: licuar plátano congelado + espinaca + leche + creatina hasta crema espesa. Verter en bowl. Topping: avena cruda, fresas, arándanos y chía encima. Comer con cuchara.</div>
+      <div class="macros"><span class="tag tp">P: 14g</span><span class="tag tc">C: 58g</span><span class="tag tg">G: 7g</span><span class="tag tk">~360 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-martes-2">
+    <div class="comida"><div class="c-icon ic-s">🥚</div><div class="c-body">
+      <div class="c-nombre">Media mañana · 10:30am</div><div class="c-plato">2 huevos duros + zanahoria con limón</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">2 unidades</span><span class="in">Huevos medianos</span><span class="ie cocido">hervidos 10 min</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Zanahoria (1 mediana)</span><span class="ie crudo">cruda, en bastones</span></div>
+        <div class="ir"><span class="ic">½ limón</span><span class="in">Jugo de limón, sal</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Huevos desde agua fría, llevar a hervor, 10 min exactos, enfriar para pelar fácil. Pueden prepararse la noche anterior. Zanahoria en bastones con limón y sal al momento.</div>
+      <div class="macros"><span class="tag tp">P: 13g</span><span class="tag tc">C: 8g</span><span class="tag tg">G: 10g</span><span class="tag tk">~175 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-martes-3">
+    <div class="comida"><div class="c-icon ic-a">🍽️</div><div class="c-body">
+      <div class="c-nombre">Almuerzo · 1:30pm</div><div class="c-plato">Ensalada completa de atún con palta</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">160g</span><span class="in">Atún al agua en lata (~1.5 latas)</span><span class="ie cocido">escurrido</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Palta (~80g pulpa)</span><span class="ie crudo">cruda, en cubos</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Lechuga (3-4 hojas)</span><span class="ie crudo">cruda</span></div>
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Tomate mediano (~100g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Pepino (~80g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Zanahoria</span><span class="ie crudo">cruda, rallada</span></div>
+        <div class="ir"><span class="ic">1 limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Escurrir bien el atún. Cortar palta en cubos. Mezclar lechuga, tomate, pepino y zanahoria rallada. Añadir atún y palta. Aderezar con limón, sal y pimienta.</div>
+      <div class="macros"><span class="tag tp">P: 38g</span><span class="tag tc">C: 12g</span><span class="tag tg">G: 18g</span><span class="tag tk">~380 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-martes-4">
+    <div class="comida"><div class="c-icon ic-c">🌙</div><div class="c-body">
+      <div class="c-nombre">Cena · 7:00pm</div><div class="c-plato">Pechuga desmenuzada con brócoli al vapor y beterraga</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">140g</span><span class="in">Pechuga de pollo (~175g crudo)</span><span class="ie cocido">hervida, desmenuzada</span></div>
+        <div class="ir"><span class="ic">150g</span><span class="in">Brócoli (185g crudo)</span><span class="ie cocido">al vapor 5-6 min</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Beterraga / remolacha</span><span class="ie cocido">cocida, rallada</span></div>
+        <div class="ir"><span class="ic">30g</span><span class="in">Lechuga</span><span class="ie crudo">cruda</span></div>
+        <div class="ir"><span class="ic">½ limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Pollo: hervir 20-25 min en agua con sal, desmenuzar con dos tenedores tibio. Brócoli: vapor 5-6 min hasta verde brillante. Servir sobre lechuga con beterraga rallada y limón.</div>
+      <div class="macros"><span class="tag tp">P: 38g</span><span class="tag tc">C: 16g</span><span class="tag tg">G: 4g</span><span class="tag tk">~250 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-martes" onclick="stepMeal('martes',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-martes">1 / 5</span>
+    <button class="btn-next" id="next-martes" onclick="stepMeal('martes',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== MIÉRCOLES ==================== -->
+<div class="dia-card" id="dia-miercoles">
+  <div class="dia-header">
+    <div class="dia-header-top">
+      <div class="dia-num">X</div>
+      <div class="dia-info"><h3>Miércoles — Regulación hormonal</h3><p>Anti-cortisol · Bajo índice glucémico</p></div>
+      <div class="dia-kcal"><div class="knum">1,430</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-miercoles">
+      <button class="mb active" onclick="showMeal('miercoles',0)"><span class="mi">🌙⚡</span><span class="mt">4:30am</span><span class="ml">Pre-entreno</span></button>
+      <button class="mb" onclick="showMeal('miercoles',1)"><span class="mi">🌾</span><span class="mt">7:15am</span><span class="ml">Post-entreno</span></button>
+      <button class="mb" onclick="showMeal('miercoles',2)"><span class="mi">🍵</span><span class="mt">10:30am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('miercoles',3)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('miercoles',4)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-miercoles-0">
+    <div class="comida"><div class="c-icon ic-d">🌙⚡</div><div class="c-body">
+      <div class="c-nombre">Pre-entreno · 4:30am</div><div class="c-plato">½ plátano + café negro</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano mediano (~60g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">1 cdita</span><span class="in">Café instantáneo en 200ml agua caliente</span><span class="ie otro">disuelto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Rápido. La avena nocturna ya está preparada desde anoche en la nevera.</div>
+      <div class="macros"><span class="tag tp">P: 1g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 0g</span><span class="tag tk">~55 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-miercoles-1">
+    <div class="comida"><div class="c-icon ic-s">🌾</div><div class="c-body">
+      <div class="c-nombre">Post-entreno · 7:15am</div><div class="c-plato">Avena nocturna de cacao y vainilla con fresas</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">50g</span><span class="in">Avena en hojuelas</span><span class="ie otro">remojada desde anoche</span></div>
+        <div class="ir"><span class="ic">200ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">fría, usada para remojar</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Cacao puro en polvo</span><span class="ie otro">sin azúcar, mezclado anoche</span></div>
+        <div class="ir"><span class="ic">½ cdita</span><span class="in">Esencia de vainilla + stevia</span><span class="ie otro">anoche</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">al servir</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Fresas (~5-6)</span><span class="ie crudo">crudas, al servir</span></div>
+        <div class="ir"><span class="ic">3–5g</span><span class="in">Creatina monohidrato</span><span class="ie otro">al servir</span></div>
+      </div>
+      <div class="prep"><strong>Preparación (noche anterior)</strong>Frasco con tapa: mezclar avena + leche + cacao + vainilla + stevia. Refrigerar mínimo 6 horas. Al servir: añadir chía, fresas y creatina. Comer frío o calentar 1-2 min.</div>
+      <div class="macros"><span class="tag tp">P: 12g</span><span class="tag tc">C: 55g</span><span class="tag tg">G: 9g</span><span class="tag tk">~350 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-miercoles-2">
+    <div class="comida"><div class="c-icon ic-s">🍵</div><div class="c-body">
+      <div class="c-nombre">Media mañana · 10:30am</div><div class="c-plato">Skyr con arándanos y canela</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">180g</span><span class="in">Yogurt griego Skyr natural</span><span class="ie otro">frío</span></div>
+        <div class="ir"><span class="ic">70g</span><span class="in">Arándanos</span><span class="ie crudo">crudos o descongelados</span></div>
+        <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela en polvo + stevia</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Bowl con skyr, arándanos encima, espolvorear canela. Acompañar con té de frutos rojos sin azúcar.</div>
+      <div class="macros"><span class="tag tp">P: 22g</span><span class="tag tc">C: 20g</span><span class="tag tg">G: 1g</span><span class="tag tk">~185 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-miercoles-3">
+    <div class="comida"><div class="c-icon ic-a">🍽️</div><div class="c-body">
+      <div class="c-nombre">Almuerzo · 1:30pm</div><div class="c-plato">Bowl de pollo, camote asado y vegetales al vapor</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">150g</span><span class="in">Pechuga de pollo (~185g crudo)</span><span class="ie cocido">horno o plancha</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Camote (~125g crudo)</span><span class="ie cocido">asado horno 200°C 25-30 min</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Brócoli (125g crudo)</span><span class="ie cocido">vapor 5-7 min</span></div>
+        <div class="ir"><span class="ic">60g</span><span class="in">Zanahoria (75g cruda)</span><span class="ie cocido">vapor 5-7 min</span></div>
+        <div class="ir"><span class="ic">30g</span><span class="in">Espinaca fresca</span><span class="ie crudo">cruda, de base</span></div>
+        <div class="ir"><span class="ic">½ limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Camote en cubos al horno 200°C 25-30 min. Pollo sazonado con limón y sal al horno 180°C 25-30 min o plancha 5 min por lado. Vegetales al vapor 5-7 min. Bowl: espinaca de base, pollo en tiras, camote y vegetales encima.</div>
+      <div class="macros"><span class="tag tp">P: 42g</span><span class="tag tc">C: 32g</span><span class="tag tg">G: 5g</span><span class="tag tk">~430 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-miercoles-4">
+    <div class="comida"><div class="c-icon ic-c">🌙</div><div class="c-body">
+      <div class="c-nombre">Cena · 7:00pm</div><div class="c-plato">Huevos revueltos con espinaca salteada y tomate</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">3 unidades</span><span class="in">Huevos medianos</span><span class="ie cocido">batidos y revueltos</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Espinaca fresca</span><span class="ie cocido">salteada 1-2 min</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Tomate (1 mediano)</span><span class="ie crudo">crudo, en cubos, encima al servir</span></div>
+        <div class="ir"><span class="ic">c/n</span><span class="in">Sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Saltear espinaca en sartén seca 1-2 min. Batir huevos con sal, verter sobre espinaca. Revolver suave a fuego medio-bajo. Apagar cuando estén casi cuajados (húmedos). Añadir tomate crudo encima.</div>
+      <div class="macros"><span class="tag tp">P: 22g</span><span class="tag tc">C: 6g</span><span class="tag tg">G: 16g</span><span class="tag tk">~260 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-miercoles" onclick="stepMeal('miercoles',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-miercoles">1 / 5</span>
+    <button class="btn-next" id="next-miercoles" onclick="stepMeal('miercoles',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== JUEVES ==================== -->
+<div class="dia-card" id="dia-jueves">
+  <div class="dia-header">
+    <div class="dia-header-top">
+      <div class="dia-num">J</div>
+      <div class="dia-info"><h3>Jueves — Hidratación y detox</h3><p>Alta fibra · Anti-inflamatorio · Piel</p></div>
+      <div class="dia-kcal"><div class="knum">1,445</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-jueves">
+      <button class="mb active" onclick="showMeal('jueves',0)"><span class="mi">🌙⚡</span><span class="mt">4:30am</span><span class="ml">Pre-entreno</span></button>
+      <button class="mb" onclick="showMeal('jueves',1)"><span class="mi">🍮</span><span class="mt">7:15am</span><span class="ml">Post-entreno</span></button>
+      <button class="mb" onclick="showMeal('jueves',2)"><span class="mi">🍓</span><span class="mt">10:30am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('jueves',3)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('jueves',4)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-jueves-0">
+    <div class="comida"><div class="c-icon ic-d">🌙⚡</div><div class="c-body">
+      <div class="c-nombre">Pre-entreno · 4:30am</div><div class="c-plato">½ plátano + café negro</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano mediano (~60g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">1 cdita</span><span class="in">Café instantáneo en 200ml agua caliente</span><span class="ie otro">disuelto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Rápido. El pudín de chía ya está listo en la nevera desde anoche.</div>
+      <div class="macros"><span class="tag tp">P: 1g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 0g</span><span class="tag tk">~55 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-jueves-1">
+    <div class="comida"><div class="c-icon ic-s">🍮</div><div class="c-body">
+      <div class="c-nombre">Post-entreno · 7:15am</div><div class="c-plato">Pudín de chía con cacao y plátano</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">3 cdas (30g)</span><span class="in">Semillas de chía</span><span class="ie otro">remojadas desde anoche</span></div>
+        <div class="ir"><span class="ic">250ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">usada para el remojo</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Cacao puro en polvo</span><span class="ie otro">mezclado anoche</span></div>
+        <div class="ir"><span class="ic">½ cdita</span><span class="in">Vainilla + stevia</span><span class="ie otro">mezclado anoche</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano (~60g)</span><span class="ie crudo">crudo, en rodajas al servir</span></div>
+        <div class="ir"><span class="ic">3–5g</span><span class="in">Creatina monohidrato</span><span class="ie otro">al servir</span></div>
+      </div>
+      <div class="prep"><strong>Preparación (noche anterior)</strong>Frasco: chía + leche + cacao + vainilla + stevia. Revolver bien (la chía se apelmaza). Refrigerar mínimo 6 horas. Al servir: remover, agregar creatina y coronar con plátano en rodajas.</div>
+      <div class="macros"><span class="tag tp">P: 10g</span><span class="tag tc">C: 48g</span><span class="tag tg">G: 12g</span><span class="tag tk">~340 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-jueves-2">
+    <div class="comida"><div class="c-icon ic-s">🍓</div><div class="c-body">
+      <div class="c-nombre">Media mañana · 10:30am</div><div class="c-plato">Skyr con fresas y frutos secos</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">150g</span><span class="in">Yogurt griego Skyr natural</span><span class="ie otro">frío</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Fresas (~5 fresas medianas)</span><span class="ie crudo">crudas, en rodajas</span></div>
+        <div class="ir"><span class="ic">15g</span><span class="in">Mix de frutos secos sin sal</span><span class="ie crudo">crudos</span></div>
+        <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela + stevia</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Skyr en bowl, fresas en rodajas, frutos secos encima, canela y stevia. Sin cocción.</div>
+      <div class="macros"><span class="tag tp">P: 21g</span><span class="tag tc">C: 20g</span><span class="tag tg">G: 7g</span><span class="tag tk">~230 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-jueves-3">
+    <div class="comida"><div class="c-icon ic-a">🍽️</div><div class="c-body">
+      <div class="c-nombre">Almuerzo · 1:30pm</div><div class="c-plato">Ensalada templada de atún, beterraga y palta</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">160g</span><span class="in">Atún al agua (~1.5 latas)</span><span class="ie cocido">escurrido</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Palta (~80g pulpa)</span><span class="ie crudo">cruda, en cubos</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Beterraga / remolacha</span><span class="ie cocido">cocida y fría, en cubos</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Lechuga (3-4 hojas)</span><span class="ie crudo">cruda</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Zanahoria</span><span class="ie crudo">cruda, rallada</span></div>
+        <div class="ir"><span class="ic">1 limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Beterraga fresca: hervir entera sin pelar 40-50 min, enfriar y pelar. Envasada: escurrir y usar directo. Armar: lechuga de base, atún, beterraga, palta y zanahoria rallada. Aderezar con limón.</div>
+      <div class="macros"><span class="tag tp">P: 38g</span><span class="tag tc">C: 18g</span><span class="tag tg">G: 16g</span><span class="tag tk">~375 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-jueves-4">
+    <div class="comida"><div class="c-icon ic-c">🌙</div><div class="c-body">
+      <div class="c-nombre">Cena · 7:00pm</div><div class="c-plato">Pechuga desmenuzada con brócoli al vapor y pepino</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">150g</span><span class="in">Pechuga de pollo (~185g crudo)</span><span class="ie cocido">hervida, desmenuzada</span></div>
+        <div class="ir"><span class="ic">180g</span><span class="in">Brócoli (220g crudo)</span><span class="ie cocido">vapor 5-6 min</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Pepino (~½ unidad)</span><span class="ie crudo">crudo, en rodajas</span></div>
+        <div class="ir"><span class="ic">½ limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Pollo: hervir 20-25 min en agua con sal, desmenuzar tibio. Brócoli: vapor 5-6 min. Servir todo junto, rociar con limón.</div>
+      <div class="macros"><span class="tag tp">P: 42g</span><span class="tag tc">C: 12g</span><span class="tag tg">G: 4g</span><span class="tag tk">~265 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-jueves" onclick="stepMeal('jueves',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-jueves">1 / 5</span>
+    <button class="btn-next" id="next-jueves" onclick="stepMeal('jueves',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== VIERNES ==================== -->
+<div class="dia-card" id="dia-viernes">
+  <div class="dia-header">
+    <div class="dia-header-top">
+      <div class="dia-num">V</div>
+      <div class="dia-info"><h3>Viernes — Energía máxima</h3><p>Mayor carbohidratos · Pre-fin de semana</p></div>
+      <div class="dia-kcal"><div class="knum">1,470</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-viernes">
+      <button class="mb active" onclick="showMeal('viernes',0)"><span class="mi">🌙⚡</span><span class="mt">4:30am</span><span class="ml">Pre-entreno</span></button>
+      <button class="mb" onclick="showMeal('viernes',1)"><span class="mi">🍳</span><span class="mt">7:15am</span><span class="ml">Post-entreno</span></button>
+      <button class="mb" onclick="showMeal('viernes',2)"><span class="mi">🫐</span><span class="mt">10:30am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('viernes',3)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('viernes',4)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-viernes-0">
+    <div class="comida"><div class="c-icon ic-d">🌙⚡</div><div class="c-body">
+      <div class="c-nombre">Pre-entreno · 4:30am</div><div class="c-plato">½ plátano + café negro</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano mediano (~60g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">1 cdita</span><span class="in">Café instantáneo en 200ml agua caliente</span><span class="ie otro">disuelto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Rápido. La semana termina fuerte.</div>
+      <div class="macros"><span class="tag tp">P: 1g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 0g</span><span class="tag tk">~55 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-viernes-1">
+    <div class="comida"><div class="c-icon ic-s">🍳</div><div class="c-body">
+      <div class="c-nombre">Post-entreno · 7:15am</div><div class="c-plato">Omelette de espinaca y tomate + avena caliente</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">3 claras</span><span class="in">Claras de huevo (~90g)</span><span class="ie cocido">batidas</span></div>
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Huevo entero (~50g)</span><span class="ie cocido">batido con las claras</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Espinaca fresca</span><span class="ie cocido">salteada brevemente</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Tomate (1 pequeño)</span><span class="ie crudo">crudo, en cubos, encima</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Avena en hojuelas</span><span class="ie crudo">cruda en seco</span></div>
+        <div class="ir"><span class="ic">180ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">para la avena</span></div>
+        <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela + stevia</span><span class="ie otro">en la avena</span></div>
+        <div class="ir"><span class="ic">3–5g</span><span class="in">Creatina monohidrato</span><span class="ie otro">en la avena</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Avena: calentar leche, añadir avena, cocinar 3-4 min, agregar canela, stevia y creatina. Omelette: saltear espinaca 1 min, verter claras + huevo batido con sal, añadir tomate encima, tapar 3-4 min fuego medio-bajo, doblar en dos.</div>
+      <div class="macros"><span class="tag tp">P: 28g</span><span class="tag tc">C: 40g</span><span class="tag tg">G: 10g</span><span class="tag tk">~380 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-viernes-2">
+    <div class="comida"><div class="c-icon ic-s">🫐</div><div class="c-body">
+      <div class="c-nombre">Media mañana · 10:30am</div><div class="c-plato">Smoothie de frutos rojos y skyr</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">100g</span><span class="in">Yogurt griego Skyr natural</span><span class="ie otro">frío</span></div>
+        <div class="ir"><span class="ic">60g</span><span class="in">Fresas (~4 fresas)</span><span class="ie crudo">crudas o congeladas</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Arándanos</span><span class="ie crudo">crudos o congelados</span></div>
+        <div class="ir"><span class="ic">150ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">fría</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">crudas, post-licuado</span></div>
+        <div class="ir"><span class="ic">c/n</span><span class="in">Stevia</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Licuar skyr + fresas + arándanos + leche + stevia hasta cremoso. Agregar chía después de licuar (no destruir). Beber de inmediato.</div>
+      <div class="macros"><span class="tag tp">P: 17g</span><span class="tag tc">C: 22g</span><span class="tag tg">G: 5g</span><span class="tag tk">~205 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-viernes-3">
+    <div class="comida"><div class="c-icon ic-a">🍽️</div><div class="c-body">
+      <div class="c-nombre">Almuerzo · 1:30pm</div><div class="c-plato">Pechuga al horno con camote y beterraga asada</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">160g</span><span class="in">Pechuga de pollo (~200g crudo)</span><span class="ie cocido">horneada 180°C 30-35 min</span></div>
+        <div class="ir"><span class="ic">130g</span><span class="in">Camote (~160g crudo)</span><span class="ie cocido">asado horno 200°C 25-30 min</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Beterraga / remolacha</span><span class="ie cocido">asada o hervida</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Brócoli (125g crudo)</span><span class="ie cocido">vapor 5-6 min</span></div>
+        <div class="ir"><span class="ic">1 limón</span><span class="in">Jugo, sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Todo al horno: camote cubos 200°C 25-30 min, beterraga cubos 30-35 min. Pollo: sazonar con limón y sal, hornear tapado con aluminio 180°C 30-35 min. Brócoli al vapor 5-6 min. Servir junto y rociar con limón.</div>
+      <div class="macros"><span class="tag tp">P: 45g</span><span class="tag tc">C: 38g</span><span class="tag tg">G: 5g</span><span class="tag tk">~445 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-viernes-4">
+    <div class="comida"><div class="c-icon ic-c">🌙</div><div class="c-body">
+      <div class="c-nombre">Cena · 7:00pm</div><div class="c-plato">Ensalada de atún con palta</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">140g</span><span class="in">Atún al agua en lata</span><span class="ie cocido">escurrido</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Palta (~80g pulpa)</span><span class="ie crudo">cruda, en láminas</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Lechuga (3-4 hojas)</span><span class="ie crudo">cruda</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Tomate (1 mediano)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Pepino (~½ unidad)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">1 limón</span><span class="in">Jugo y sal</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Escurrir atún. Montar: lechuga de base, tomate y pepino en rodajas, atún encima, palta en láminas al costado. Aderezar con limón y sal. Sin cocción.</div>
+      <div class="macros"><span class="tag tp">P: 34g</span><span class="tag tc">C: 10g</span><span class="tag tg">G: 15g</span><span class="tag tk">~315 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-viernes" onclick="stepMeal('viernes',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-viernes">1 / 5</span>
+    <button class="btn-next" id="next-viernes" onclick="stepMeal('viernes',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== SÁBADO ==================== -->
+<div class="dia-card" id="dia-sabado">
+  <div class="dia-header">
+    <div class="dia-header-top">
+      <div class="dia-num">S</div>
+      <div class="dia-info"><h3>Sábado — Recuperación muscular</h3><p>Post-semana · Anti-inflamatorio</p></div>
+      <div class="dia-kcal"><div class="knum">1,450</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-sabado">
+      <button class="mb active" onclick="showMeal('sabado',0)"><span class="mi">🌙⚡</span><span class="mt">4:30am</span><span class="ml">Pre-entreno</span></button>
+      <button class="mb" onclick="showMeal('sabado',1)"><span class="mi">🥞</span><span class="mt">7:15am</span><span class="ml">Post-entreno</span></button>
+      <button class="mb" onclick="showMeal('sabado',2)"><span class="mi">🍓</span><span class="mt">10:30am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('sabado',3)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('sabado',4)"><span class="mi">🍫</span><span class="mt">4:30pm</span><span class="ml">Merienda</span></button>
+      <button class="mb" onclick="showMeal('sabado',5)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-sabado-0">
+    <div class="comida"><div class="c-icon ic-d">🌙⚡</div><div class="c-body">
+      <div class="c-nombre">Pre-entreno · 4:30am</div><div class="c-plato">½ plátano + café negro</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano mediano (~60g)</span><span class="ie crudo">crudo</span></div>
+        <div class="ir"><span class="ic">1 cdita</span><span class="in">Café instantáneo en 200ml agua caliente</span><span class="ie otro">disuelto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Rápido. Los ingredientes para los pancakes se mezclan al volver del entreno.</div>
+      <div class="macros"><span class="tag tp">P: 1g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 0g</span><span class="tag tk">~55 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-sabado-1">
+    <div class="comida"><div class="c-icon ic-s">🥞</div><div class="c-body">
+      <div class="c-nombre">Post-entreno · 7:15am</div><div class="c-plato">Pancakes de avena y plátano con arándanos</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">50g</span><span class="in">Avena (molida en licuadora)</span><span class="ie crudo">cruda, molida al momento</span></div>
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Huevo mediano (~50g)</span><span class="ie cocido">batido, en la mezcla</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano (~60g)</span><span class="ie crudo">crudo, machacado</span></div>
+        <div class="ir"><span class="ic">½ cdita</span><span class="in">Vainilla + canela + stevia</span><span class="ie otro">en la mezcla</span></div>
+        <div class="ir"><span class="ic">60g</span><span class="in">Arándanos frescos</span><span class="ie crudo">crudos, de topping</span></div>
+        <div class="ir"><span class="ic">3–5g</span><span class="in">Creatina monohidrato</span><span class="ie otro">disuelta en agua aparte</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Moler avena 20 seg en licuadora. Mezclar: harina de avena + huevo batido + plátano machacado + vainilla + canela + stevia. Si está muy espesa, 1-2 cdas de agua. Sartén antiadherente a fuego medio-bajo sin aceite. Cucharadas de masa, 2-3 min hasta burbujas, voltear, 1-2 min más. Topping: arándanos.</div>
+      <div class="macros"><span class="tag tp">P: 16g</span><span class="tag tc">C: 55g</span><span class="tag tg">G: 8g</span><span class="tag tk">~365 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-sabado-2">
+    <div class="comida"><div class="c-icon ic-s">🍓</div><div class="c-body">
+      <div class="c-nombre">Media mañana · 10:30am</div><div class="c-plato">Skyr con fresas y chía</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">180g</span><span class="in">Yogurt griego Skyr natural</span><span class="ie otro">frío</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Fresas (~5 medianas)</span><span class="ie crudo">crudas, en rodajas</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">crudas</span></div>
+        <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela + stevia</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Skyr en bowl, fresas en rodajas, chía, canela y stevia. Sin cocción.</div>
+      <div class="macros"><span class="tag tp">P: 23g</span><span class="tag tc">C: 18g</span><span class="tag tg">G: 3g</span><span class="tag tk">~195 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-sabado-3">
+    <div class="comida"><div class="c-icon ic-a">🍽️</div><div class="c-body">
+      <div class="c-nombre">Almuerzo · 1:30pm</div><div class="c-plato">Gran bowl de pollo, palta y vegetales coloridos</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">150g</span><span class="in">Pechuga de pollo (~185g crudo)</span><span class="ie cocido">plancha</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Palta (~80g pulpa)</span><span class="ie crudo">cruda, en cubos</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Zanahoria</span><span class="ie crudo">cruda, rallada</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Beterraga / remolacha</span><span class="ie cocido">cocida, rallada</span></div>
+        <div class="ir"><span class="ic">30g + 30g</span><span class="in">Espinaca + Lechuga</span><span class="ie crudo">crudas, de base</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Tomate (1 mediano)</span><span class="ie crudo">crudo, en rodajas</span></div>
+        <div class="ir"><span class="ic">1 limón</span><span class="in">Jugo y sal</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Pollo: sazonar con sal, pimienta y limón. Plancha 4-5 min por lado. Reposar 2 min, cortar en tiras. Bowl: espinaca + lechuga, pollo encima, palta, zanahoria y beterraga ralladas, tomate. Aderezar con limón.</div>
+      <div class="macros"><span class="tag tp">P: 44g</span><span class="tag tc">C: 22g</span><span class="tag tg">G: 18g</span><span class="tag tk">~435 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-sabado-4">
+    <div class="comida"><div class="c-icon ic-m">🍫</div><div class="c-body">
+      <div class="c-nombre">Merienda · 4:30pm</div><div class="c-plato">Hot cacao relajante + frutos secos</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">200ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">calentada ~70°C</span></div>
+        <div class="ir"><span class="ic">1 cda (10g)</span><span class="in">Cacao puro en polvo</span><span class="ie otro">sin azúcar</span></div>
+        <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela + stevia</span><span class="ie otro">al gusto</span></div>
+        <div class="ir"><span class="ic">15g</span><span class="in">Mix de frutos secos sin sal</span><span class="ie crudo">crudos</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Calentar leche. En la taza, disolver cacao con 2 cdas de leche caliente hasta pasta sin grumos. Añadir el resto, canela y stevia. Remover. Frutos secos aparte en vasito.</div>
+      <div class="macros"><span class="tag tp">P: 5g</span><span class="tag tc">C: 14g</span><span class="tag tg">G: 11g</span><span class="tag tk">~175 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-sabado-5">
+    <div class="comida"><div class="c-icon ic-c">🌙</div><div class="c-body">
+      <div class="c-nombre">Cena · 7:00pm</div><div class="c-plato">Huevos escalfados con espinaca y brócoli al vapor</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">3 unidades</span><span class="in">Huevos medianos</span><span class="ie cocido">escalfados (pochados)</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Espinaca fresca</span><span class="ie cocido">salteada en sartén seca</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Brócoli (125g crudo)</span><span class="ie cocido">vapor 5-6 min</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Tomate cherry (~6-8 unidades)</span><span class="ie crudo">crudos, partidos</span></div>
+        <div class="ir"><span class="ic">c/n</span><span class="in">Sal y pimienta</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Brócoli: vapor 5-6 min. Espinaca: saltear 1-2 min sartén seca. Huevos escalfados: agua casi a hervor + chorrito de vinagre blanco, remolino con cuchara, romper huevo en cuenco y deslizar al centro, 3 min. Servir espinaca de base, brócoli, huevos encima, tomate cherry alrededor.</div>
+      <div class="macros"><span class="tag tp">P: 22g</span><span class="tag tc">C: 8g</span><span class="tag tg">G: 15g</span><span class="tag tk">~255 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-sabado" onclick="stepMeal('sabado',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-sabado">1 / 6</span>
+    <button class="btn-next" id="next-sabado" onclick="stepMeal('sabado',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== DOMINGO ==================== -->
+<div class="dia-card" id="dia-domingo">
+  <div class="dia-header dom">
+    <div class="dia-header-top">
+      <div class="dia-num">D</div>
+      <div class="dia-info"><h3>Domingo — Descanso & recarga 🌸</h3><p>Sin entreno · Duerme hasta más tarde</p></div>
+      <div class="dia-kcal"><div class="knum">~1,650</div><div class="klbl">kcal</div></div>
+    </div>
+    <div class="meal-nav" id="mn-domingo">
+      <button class="mb active" onclick="showMeal('domingo',0)"><span class="mi">🌞</span><span class="mt">8–9am</span><span class="ml">Desayuno</span></button>
+      <button class="mb" onclick="showMeal('domingo',1)"><span class="mi">🧃</span><span class="mt">11:00am</span><span class="ml">Media mañana</span></button>
+      <button class="mb" onclick="showMeal('domingo',2)"><span class="mi">🍽️</span><span class="mt">1:30pm</span><span class="ml">Almuerzo</span></button>
+      <button class="mb" onclick="showMeal('domingo',3)"><span class="mi">🍫</span><span class="mt">4:30pm</span><span class="ml">Merienda</span></button>
+      <button class="mb" onclick="showMeal('domingo',4)"><span class="mi">🌙</span><span class="mt">7:00pm</span><span class="ml">Cena</span></button>
+    </div>
+  </div>
+
+  <div class="meal-view active" id="mv-domingo-0">
+    <div class="comida"><div class="c-icon ic-d">🌞</div><div class="c-body">
+      <div class="c-nombre">Desayuno · 8:00–9:00am — sin prisa</div><div class="c-plato">Brunch especial: pancakes de avena + bowl de skyr con fruta</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">50g</span><span class="in">Avena (molida en licuadora)</span><span class="ie crudo">cruda, molida</span></div>
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Huevo mediano</span><span class="ie cocido">batido, en la masa</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Plátano (~60g)</span><span class="ie crudo">machacado</span></div>
+        <div class="ir"><span class="ic">½ cdita</span><span class="in">Vainilla + canela + stevia</span><span class="ie otro">al gusto</span></div>
+        <div class="ir"><span class="ic">60g</span><span class="in">Arándanos frescos</span><span class="ie crudo">topping pancakes</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Skyr natural</span><span class="ie otro">bowl aparte</span></div>
+        <div class="ir"><span class="ic">60g</span><span class="in">Fresas (~4 fresas)</span><span class="ie crudo">crudas, en el bowl</span></div>
+        <div class="ir"><span class="ic">1 cda (10g)</span><span class="in">Cacao puro en polvo</span><span class="ie otro">en el bowl de skyr</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">en el bowl</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Pancakes: moler avena, mezclar con huevo + plátano machacado + vainilla + canela + stevia. Sartén antiadherente sin aceite fuego medio-bajo, 2-3 min por lado. Topping: arándanos. Bowl: skyr + fresas en rodajas + cacao + chía. Disfrutar sin prisa.</div>
+      <div class="macros"><span class="tag tp">P: 28g</span><span class="tag tc">C: 72g</span><span class="tag tg">G: 12g</span><span class="tag tk">~510 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-domingo-1">
+    <div class="comida"><div class="c-icon ic-s">🧃</div><div class="c-body">
+      <div class="c-nombre">Media mañana · 11:00am</div><div class="c-plato">Smoothie especial de la semana</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Plátano (~120g)</span><span class="ie otro">congelado en rodajas</span></div>
+        <div class="ir"><span class="ic">1 cda (10g)</span><span class="in">Cacao puro en polvo</span><span class="ie otro">sin azúcar</span></div>
+        <div class="ir"><span class="ic">150ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">fría</span></div>
+        <div class="ir"><span class="ic">3–5 cubos</span><span class="in">Hielo</span><span class="ie otro">para textura fría</span></div>
+        <div class="ir"><span class="ic">1 cda</span><span class="in">Semillas de chía</span><span class="ie crudo">post-licuado</span></div>
+        <div class="ir"><span class="ic">c/n</span><span class="in">Stevia</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Licuar plátano congelado + cacao + leche + hielo + stevia hasta espeso y cremoso. Agregar chía después de licuar. Beber de inmediato con sorbete grueso o cuchara.</div>
+      <div class="macros"><span class="tag tp">P: 6g</span><span class="tag tc">C: 40g</span><span class="tag tg">G: 7g</span><span class="tag tk">~245 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-domingo-2">
+    <div class="comida"><div class="c-icon ic-a">🍽️</div><div class="c-body">
+      <div class="c-nombre">Almuerzo · 1:30–2:00pm</div><div class="c-plato">Pollo al horno con camote, palta y ensalada colorida</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">170g</span><span class="in">Pechuga de pollo (~210g crudo)</span><span class="ie cocido">horneada, sazonada a gusto</span></div>
+        <div class="ir"><span class="ic">150g</span><span class="in">Camote (~185g crudo)</span><span class="ie cocido">asado horno 200°C 25-30 min</span></div>
+        <div class="ir"><span class="ic">½ unidad</span><span class="in">Palta (~80g pulpa)</span><span class="ie crudo">cruda, en láminas</span></div>
+        <div class="ir"><span class="ic">80g</span><span class="in">Beterraga / remolacha</span><span class="ie cocido">cocida, en cubos</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Zanahoria</span><span class="ie crudo">cruda, rallada</span></div>
+        <div class="ir"><span class="ic">40g + 80g</span><span class="in">Lechuga + Tomate</span><span class="ie crudo">crudos</span></div>
+        <div class="ir"><span class="ic">1 limón</span><span class="in">Jugo, sal y especias</span><span class="ie otro">al gusto</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Pollo: sazonar generosamente (sal, pimienta, limón, orégano, ajo en polvo). Hornear tapado con aluminio a 180°C 30-35 min, destapar últimos 5 min para dorar. Camote: cubos al horno 200°C 25-30 min. Ensalada: lechuga + tomate + zanahoria + beterraga + palta. Limón y sal. ¡Porción generosa!</div>
+      <div class="macros"><span class="tag tp">P: 48g</span><span class="tag tc">C: 46g</span><span class="tag tg">G: 14g</span><span class="tag tk">~545 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-domingo-3">
+    <div class="comida"><div class="c-icon ic-m">🍫</div><div class="c-body">
+      <div class="c-nombre">Merienda · 4:30pm</div><div class="c-plato">Hot cacao relajante + frutos secos</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">250ml</span><span class="in">Leche de almendra sin azúcar</span><span class="ie otro">calentada</span></div>
+        <div class="ir"><span class="ic">1.5 cdas (15g)</span><span class="in">Cacao puro en polvo</span><span class="ie otro">sin azúcar</span></div>
+        <div class="ir"><span class="ic">¼ cdita</span><span class="in">Canela + stevia</span><span class="ie otro">al gusto</span></div>
+        <div class="ir"><span class="ic">20g</span><span class="in">Mix de frutos secos sin sal</span><span class="ie crudo">crudos</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Calentar leche. Disolver cacao en 2 cdas de leche caliente primero (pasta sin grumos). Añadir resto de leche, canela y stevia. Remover. Disfrutar tranquilamente con los frutos secos.</div>
+      <div class="macros"><span class="tag tp">P: 6g</span><span class="tag tc">C: 16g</span><span class="tag tg">G: 14g</span><span class="tag tk">~210 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-view" id="mv-domingo-4">
+    <div class="comida"><div class="c-icon ic-c">🌙</div><div class="c-body">
+      <div class="c-nombre">Cena · 7:00pm</div><div class="c-plato">Ensalada de atún con palta y huevo duro + skyr de postre</div>
+      <div class="ings">
+        <div class="ir"><span class="ic">120g</span><span class="in">Atún al agua en lata</span><span class="ie cocido">escurrido</span></div>
+        <div class="ir"><span class="ic">1 unidad</span><span class="in">Huevo mediano</span><span class="ie cocido">duro, hervido 10 min</span></div>
+        <div class="ir"><span class="ic">¼ unidad</span><span class="in">Palta (~40g pulpa)</span><span class="ie crudo">cruda, en cubos</span></div>
+        <div class="ir"><span class="ic">40g</span><span class="in">Lechuga (3 hojas)</span><span class="ie crudo">cruda</span></div>
+        <div class="ir"><span class="ic">80g + 80g</span><span class="in">Pepino + Tomate</span><span class="ie crudo">crudos, en rodajas</span></div>
+        <div class="ir"><span class="ic">100g</span><span class="in">Skyr natural</span><span class="ie otro">postre, en vasito aparte</span></div>
+        <div class="ir"><span class="ic">50g</span><span class="in">Arándanos + stevia</span><span class="ie crudo">en el skyr</span></div>
+      </div>
+      <div class="prep"><strong>Preparación</strong>Ensalada: lechuga de base, atún escurrido, huevo en mitades, palta, pepino y tomate. Aderezar con limón y sal. Postre: skyr con arándanos y stevia en un vasito. Cena tranquila, 2h antes de dormir.</div>
+      <div class="macros"><span class="tag tp">P: 32g</span><span class="tag tc">C: 18g</span><span class="tag tg">G: 15g</span><span class="tag tk">~350 kcal</span></div>
+    </div></div>
+  </div>
+
+  <div class="meal-nav-btns">
+    <button class="btn-prev" id="prev-domingo" onclick="stepMeal('domingo',-1)" disabled>← Anterior</button>
+    <span class="meal-counter" id="counter-domingo">1 / 5</span>
+    <button class="btn-next" id="next-domingo" onclick="stepMeal('domingo',1)">Siguiente →</button>
+  </div>
+</div>
+
+<!-- ==================== EXTRAS ==================== -->
+<div class="extras-card" id="dia-extras">
+  <div class="extra-tabs">
+    <button class="extra-tab active" onclick="showTab('sup')">💊 Suplementos</button>
+    <button class="extra-tab" onclick="showTab('tips')">🧠 Claves del plan</button>
+    <button class="extra-tab" onclick="showTab('agua')">💧 Hidratación</button>
+  </div>
+
+  <div class="extra-panel active" id="panel-sup">
+    <div class="sup-list">
+      <div class="sup-item"><div class="si">💪</div><div class="st"><h5>Creatina monohidrato · 3–5g post-entreno (L–S)</h5><p>Disolver en el post-entreno (avena, smoothie o pudín). Domingo: tomar igual en cualquier comida para mantener saturación muscular. Preserva músculo, mejora recuperación y rendimiento.</p></div></div>
+      <div class="sup-item"><div class="si">🌱</div><div class="st"><h5>Semillas de chía · 1–2 cdas diarias</h5><p>Omega-3 vegetal antiinflamatorio, fibra soluble para saciedad y tránsito intestinal, regula pico de glucosa. Remojar mínimo 15 min antes de consumir para máxima absorción.</p></div></div>
+      <div class="sup-item"><div class="si">🍫</div><div class="st"><h5>Cacao puro en polvo · 1–1.5 cdas diarias</h5><p>Magnesio para reducir cortisol y mejorar sueño, flavonoides para elasticidad de piel, antioxidante potente. Siempre sin azúcar añadida. No sustituir por cacao procesado.</p></div></div>
+      <div class="sup-item"><div class="si">🍵</div><div class="st"><h5>Té de frutos rojos · 2 tazas al día (sin azúcar)</h5><p>Antioxidantes contra daño oxidativo en piel, mejora sensibilidad a la insulina, antiinflamatorio. Preparar en litros y guardar frío en la nevera para tomarlo durante el día.</p></div></div>
+    </div>
+  </div>
+
+  <div class="extra-panel" id="panel-tips">
+    <div class="tips-grid">
+      <div class="tip"><div class="ti">⏰</div><h5>Horarios consistentes</h5><p>Comer a la misma hora regula la insulina y el cortisol. No saltarse ninguna comida — el pre-entreno a las 4:30am es obligatorio.</p></div>
+      <div class="tip"><div class="ti">🍳</div><h5>Prep nocturna</h5><p>Preparar la noche anterior la avena nocturna o el pudín de chía ahorra tiempo y garantiza el post-entreno.</p></div>
+      <div class="tip"><div class="ti">🌙</div><h5>Cena 2h antes de dormir</h5><p>Cenar a las 7pm y dormir a las 9pm permite buena digestión, mejor sueño y mayor quema de grasa nocturna.</p></div>
+      <div class="tip"><div class="ti">🍋</div><h5>Agua con limón al despertar</h5><p>250ml de agua tibia con limón antes del café activa el metabolismo, aporta vitamina C para el colágeno y prepara el hígado.</p></div>
+      <div class="tip"><div class="ti">🌸</div><h5>El domingo importa</h5><p>El músculo crece en la recuperación, no durante el ejercicio. Dormir bien el domingo es parte del entrenamiento.</p></div>
+      <div class="tip"><div class="ti">📐</div><h5>Pesa los ingredientes</h5><p>Al principio pesar el pollo, camote y atún ayuda a acostumbrarse a las porciones correctas rápidamente.</p></div>
+    </div>
+  </div>
+
+  <div class="extra-panel" id="panel-agua">
+    <div style="background:linear-gradient(135deg,#E3F2FD,#BBDEFB);border-radius:14px;padding:20px;display:flex;gap:16px;align-items:center;">
+      <div style="font-size:40px;">💧</div>
+      <div>
+        <h4 style="color:#0D47A1;font-size:1rem;margin-bottom:6px;">Hidratación diaria: mínimo 2.5–3 litros</h4>
+        <p style="color:#1565C0;font-size:13px;line-height:1.65;">Agua con limón al despertar antes del pre-entreno · Café solo pre-entreno (máx. 2 tazas antes de las 10am) · Té de frutos rojos frío sin azúcar durante el día · Domingos puedes despertar más tarde y relajarte · Cero bebidas azucaradas ni jugos de caja</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <p>Plan nutricional semanal · 1,450 kcal/día · Déficit controlado · Alta proteína 🌿</p>
+
+</div>
+
+</div><!-- end container -->
+
+<script>
+const DAYS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+const MEALS = { lunes:5, martes:5, miercoles:5, jueves:5, viernes:5, sabado:6, domingo:5 };
+const currentMeal = {};
+DAYS.forEach(d => currentMeal[d] = 0);
+
+function showDay(day) {
+  // hide all day cards
+  DAYS.forEach(d => {
+    document.getElementById('dia-'+d).classList.remove('visible');
+    document.getElementById('btn-'+d).classList.remove('active');
+  });
+  document.getElementById('dia-extras').classList.remove('visible');
+  document.getElementById('btn-extras').classList.remove('active');
+
+  const btn = document.getElementById('btn-'+day);
+  if (btn) btn.classList.add('active');
+
+  if (day === 'extras') {
+    document.getElementById('dia-extras').classList.add('visible');
+  } else {
+    document.getElementById('dia-'+day).classList.add('visible');
+    showMeal(day, 0);
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function showMeal(day, idx) {
+  const total = MEALS[day];
+  // hide all meal views
+  for (let i = 0; i < total; i++) {
+    const v = document.getElementById('mv-'+day+'-'+i);
+    if (v) v.classList.remove('active');
+    const mb = document.querySelector('#mn-'+day+' .mb:nth-child('+(i+1)+')');
+    if (mb) mb.classList.remove('active');
+  }
+  // show target
+  const target = document.getElementById('mv-'+day+'-'+idx);
+  if (target) target.classList.add('active');
+  const mb = document.querySelector('#mn-'+day+' .mb:nth-child('+(idx+1)+')');
+  if (mb) mb.classList.add('active');
+
+  currentMeal[day] = idx;
+
+  // update prev/next
+  const prev = document.getElementById('prev-'+day);
+  const next = document.getElementById('next-'+day);
+  const counter = document.getElementById('counter-'+day);
+  if (prev) prev.disabled = idx === 0;
+  if (next) next.disabled = idx === total - 1;
+  if (counter) counter.textContent = (idx+1) + ' / ' + total;
+}
+
+function stepMeal(day, dir) {
+  const idx = currentMeal[day] + dir;
+  if (idx >= 0 && idx < MEALS[day]) showMeal(day, idx);
+}
+
+function showTab(tab) {
+  ['sup','tips','agua'].forEach(t => {
+    document.getElementById('panel-'+t).classList.toggle('active', t === tab);
+  });
+  document.querySelectorAll('.extra-tab').forEach((el, i) => {
+    el.classList.toggle('active', ['sup','tips','agua'][i] === tab);
+  });
+}
+
+// Init
+showDay('lunes');
+</script>
+</body>
+</html>
